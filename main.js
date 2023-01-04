@@ -96,18 +96,6 @@ const fetchAllUsers = async () => {
 };
 
 
-
-// Fetch All Users filter
-const fetchAllUsersFilter = async (mes,ano) => {
-  const data = await fetch(`action.php?select=1&mes=${mes}&ano=${ano}`, {
-    method: "POST",
-  });
-  const response = await data.text();
-  tbody.innerHTML = response;
-  fetchAllUsersFilter(mes,ano);
-};
-
-
 // Edit User Ajax Request
 tbody.addEventListener("click", (e) => {
   if (e.target && e.target.matches("a.editLink")) {
@@ -287,8 +275,7 @@ addScheduleForm.addEventListener("submit", async (e) => {
   }
 });
 
-//var asyncData
-//GET
+//GET ALL SCHEDULES
 const fetchAllSchedule = async () => {
   const loading = new bootstrap.Modal(document.getElementById('loading'), {
     keyboard: false,
@@ -311,10 +298,44 @@ const fetchAllSchedule = async () => {
     method: "GET",
   });
 
+  const calendar = await fetch("action.php?readSchedule2=1", {
+    method: "GET",
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+  }
+  });
+
   if ($('#Schedules').DataTable()){
     $('#Schedules').DataTable().destroy()
   }
+
   const response = await data.text();
+  var response2 = await calendar.json()
+
+  var evt = JSON.parse(response2)
+  var myEvents = []
+  for (let i = 0; i < evt.length; i++) {
+    myEvents.push(
+      { 
+          id: evt[i].tipo,
+          name: evt[i].medico, 
+          description: evt[i].tipo+' - '+'Paciente: '+evt[i].nome+' - '+evt[i].dataconsulta.slice(10,16)+'🕒',
+          date: evt[i].dataconsulta,
+          badge: evt[i].estado,
+          type: "event", 
+      }
+    )
+  }
+  
+  
+  $('#calendar').evoCalendar({
+    theme: 'Midnight Blue',
+    language: 'pt',
+    calendarEvents: myEvents
+})
+
+
   scheduleContent.innerHTML = response;
   $('#Schedules').DataTable()
   ScheduleTable.style.display = 'block'
@@ -322,6 +343,7 @@ const fetchAllSchedule = async () => {
 
   if (pacientTable.style.display = 'block') {
     pacientTable.style.display = 'none'
+    document.getElementById('nav-tab').style.display = 'flex'
   }
   if (EmployeeTable.style.display = 'block') {
     EmployeeTable.style.display = 'none'
@@ -332,6 +354,91 @@ const fetchAllSchedule = async () => {
 
 
 };
+
+// GET SCHEDULES BY PROFESSIONAL
+selectForm.addEventListener("submit", async (e) =>{
+
+  e.preventDefault();
+
+  const loading = new bootstrap.Modal(document.getElementById('loading'), {
+    keyboard: false,
+    focus: true,
+    animation: true
+  })
+
+
+  let EmployeeTable = document.getElementById("employeeTable")
+  let ScheduleTableTitle = document.getElementById("ScheduleTableTitle")
+  let ScheduleTable = document.getElementById("ScheduleTable")
+  let scheduleContent = document.getElementById("scheduleContent")
+
+  ScheduleTableTitle.textContent = 'ATENDIMENTOS CADASTRADOS'
+  welcomeScreen.style.display = 'none'
+  loading.show();
+
+ categoriaFilter = document.getElementById("categoriaFilter").value;
+ ScheduleTableTitle.textContent = 'ATENDIMENTOS CADASTRADOS PARA: '+categoriaFilter
+
+  const data = await fetch(`action.php?readScheduleCat=1&select=${categoriaFilter}`, {
+    method: "GET",
+    
+  });
+  const calendar = await fetch(`action.php?readScheduleCat2=1&select=${categoriaFilter}`, {
+    method: "GET",
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+  }
+  });
+
+  if ($('#Schedules').DataTable()){
+    $('#Schedules').DataTable().destroy()
+  }
+
+  const response = await data.text();
+  var response2 = await calendar.json()
+
+  var evt = JSON.parse(response2)
+  var myEvents = []
+  for (let i = 0; i < evt.length; i++) {
+    myEvents.push(
+      { 
+          id: evt[i].tipo,
+          name: evt[i].medico, 
+          description: evt[i].tipo+' - '+'Paciente: '+evt[i].nome+' - '+evt[i].dataconsulta.slice(10,16)+'🕒',
+          date: evt[i].dataconsulta,
+          badge: evt[i].estado,
+          type: "event", 
+      }
+    )
+  }
+  
+  
+  $('#calendar').evoCalendar({
+    theme: 'Midnight Blue',
+    language: 'pt',
+    calendarEvents: myEvents
+})
+
+
+  scheduleContent.innerHTML = response;
+  $('#Schedules').DataTable()
+  ScheduleTable.style.display = 'block'
+
+
+  if (pacientTable.style.display = 'block') {
+    pacientTable.style.display = 'none'
+    document.getElementById('nav-tab').style.display = 'flex'
+  }
+  if (EmployeeTable.style.display = 'block') {
+    EmployeeTable.style.display = 'none'
+  }
+  if (ScheduleTable.style.display = 'block') {
+		loading.hide();
+    filterModal.hide();
+	}
+});
+
 
 //UPDATE
 scheduleContent.addEventListener("click", (e) => {
@@ -377,7 +484,7 @@ updateScheduleForm.addEventListener("submit", async (e) => {
     updateScheduleForm.reset();
     updateScheduleForm.classList.remove("was-validated");
     editScheduleModal.hide();
-    //fetchAllSchedule();
+    fetchAllSchedule();
     $(showAlert[0]).fadeTo(2000, 500).slideUp(500, function(){
       $(showAlert[0]).slideUp(500);
     });
@@ -390,6 +497,12 @@ document.getElementById("scheduleContent").addEventListener("click",(e) =>{
     let id = e.target.getAttribute("id");
     updateScheduleFrequence(id);
   }
+
+  if (e.target && e.target.matches(".registerFault")) {
+    e.preventDefault();
+    let id = e.target.getAttribute("id");
+    registerFault(id);
+  }
 })
 
 const updateScheduleFrequence = async (id) => {
@@ -401,6 +514,20 @@ const updateScheduleFrequence = async (id) => {
   showAlert[0].innerHTML = response;
 
   //document.getElementsByClassName("frequencia").checked = true
+
+  $(showAlert[0]).fadeTo(2000, 500).slideUp(500, function(){
+    $(showAlert[0]).slideUp(500);
+  });
+  fetchAllSchedule();
+};
+
+const registerFault = async (id) => {
+  const data = await fetch(`action.php?registerFault=1&id=${id}`, {
+    method: "POST",
+  });
+
+  const response = await data.text();
+  showAlert[0].innerHTML = response;
 
   $(showAlert[0]).fadeTo(2000, 500).slideUp(500, function(){
     $(showAlert[0]).slideUp(500);
@@ -602,11 +729,12 @@ btnReturn2.addEventListener("click",() => {
   $('#Schedules').DataTable().destroy();
   document.querySelectorAll("div.container-xxl")[4].style.display = 'none'
   welcomeScreen.style.display = 'block'
+  document.getElementById('nav-tab').style.display = 'none'
   
 })
 btnReturn3.addEventListener("click",() => {
   $('#employees').DataTable().destroy();
-  document.querySelectorAll("div.container-xxl")[6].style.display = 'none'
+  document.querySelectorAll("div.container-xxl")[7].style.display = 'none'
   welcomeScreen.style.display = 'block'
 })
 
@@ -645,36 +773,6 @@ fetchToday();
 
 
 
-selectForm.addEventListener("submit", async (e) =>{
-  e.preventDefault();
-
- mes = document.getElementById("mes").value;
- ano = document.getElementById("ano").value;
-
-  const formData = new FormData(selectForm);
-
-  const data = await fetch(`action.php?select=1&mes=${mes}&ano=${ano}`, {
-    method: "GET",
-    
-  });
-
-  const data1 = await fetch(`action.php?selectVal=1&mes=${mes}&ano=${ano}`, {
-    method: "GET",
-    
-  });
-
-
-  const response = await data.text();
-  const response2 = await data1.text();
-
-  filterModal.hide();
-  
-  tbody.innerHTML = response;
-  showAlert.innerHTML = response2;
-  
-  fetchAllUsersFilter(mes,ano);
-
-});
 
 
 

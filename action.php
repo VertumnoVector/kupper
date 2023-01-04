@@ -1,4 +1,9 @@
 <?php 
+session_start();
+    if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
+        header("location: index.php");
+        exit;
+    }
   require_once 'db.php';
   require_once 'util.php';
   setlocale(LC_TIME, 'pt_BR', 'pt_BR.utf-8', 'pt_BR.utf-8', 'portuguese');
@@ -250,6 +255,52 @@
     $output = '';
     if ($users) {
       foreach ($users as $row) {
+        $output .= '' . ($row['frequencia'] == "checked" ? "<tr class='table-success'>" : (strftime("%Y-%m-%d",strtotime($row['dataconsulta'])) == date('Y-m-d') ? "<tr class='table-warning'>" : (strftime("%Y-%m-%d",strtotime($row['dataconsulta'])) < date('Y-m-d') ? "<tr class='table-danger'>" : "<tr>"))) . '
+                      <td>' . $row['idatendimento'] . '</td>
+                      <td>' . $row['nome'] . '</td>
+                      <td>' . $row['tipo'] . '</td>
+                      <td>' . $row['prontuario'] . '</td>
+                      <td>' . $row['medico'] . '</td>
+                      <td>' . $row['contato'] . '</td>
+                      <td style="text-align: center; vertical-align: middle;"> <input type="checkbox" id="'. $row['idatendimento'] .'" class="form-check-input frequencia"'. $row['frequencia'] .'></td>
+                      <td>' . $row['estado'] . '</td>
+                      <td>' . $row['plano'] . '</td>
+                      <td>' . utf8_encode(strftime("%a, %d/%b/%Y as %H:%M",strtotime($row['dataconsulta']))) . '</td>
+                      <td>
+                        '.((strftime("%Y-%m-%d",strtotime($row['dataconsulta'])) < date('Y-m-d')) && $row['frequencia'] <> "checked" ? "<a href='#' id=". $row['idatendimento'] . "  class='btn btn-primary btn-sm rounded-pill py-0 registerFault'>Faltou</a>" : "<!-- -->").' 
+                        <!--<a href="print.php?id='. $row['idatendimento'] .'" id="" target:_blank' . $row['idatendimento'] . '" class="btn btn-primary btn-sm rounded-pill py-0 ">Imprimir</a>  -->
+                        <a href="#" id="' . $row['idatendimento'] . '" class="btn btn-success btn-sm rounded-pill py-0 editLink" data-bs-toggle="modal" data-bs-target="#editScheduleModal">Editar</a>
+                        <a href="#" id="' . $row['idatendimento'] . '" class="btn btn-danger btn-sm rounded-pill py-0 deleteScheduleLink" data-bs-toggle="modal" data-bs-target="#confirmDeleteScheduleModal">Delete</a>
+                      </td>
+                    </tr>';
+      }
+      echo ($output);
+    } else {
+      echo '<tr>
+              <td colspan="6">Não existe registro no banco</td>
+            </tr>';
+    }
+    
+  }
+
+  if (isset($_GET['readSchedule2'])) {
+    $users = $db->readSchedule2();
+    $output = '';
+    if ($users) {
+      echo json_encode(($users));
+    } else {
+      echo '<tr>
+              <td colspan="6">Não existe registro no banco</td>
+            </tr>';
+    }
+    
+  }
+
+  if (isset($_GET['readScheduleCat'])) {
+    $users = $db->readScheduleCat($_GET['select']);
+    $output = '';
+    if ($users) {
+      foreach ($users as $row) {
         $output .= '<tr>
                       <td>' . $row['idatendimento'] . '</td>
                       <td>' . $row['nome'] . '</td>
@@ -268,7 +319,7 @@
                       </td>
                     </tr>';
       }
-      echo $output;
+      echo ($output);
     } else {
       echo '<tr>
               <td colspan="6">Não existe registro no banco</td>
@@ -276,6 +327,23 @@
     }
     
   }
+
+  
+  if (isset($_GET['readScheduleCat2'])) {
+    $users = $db->readScheduleCat2($_GET['select']);
+    $output = '';
+    if ($users) {
+      echo json_encode($users);
+    } else {
+      echo '<tr>
+              <td colspan="6">Não existe registro no banco</td>
+            </tr>';
+    }
+    
+  }
+
+
+
   //UPDATE
   if (isset($_GET['editSchedule'])) {
     $id = $_GET['id'];
@@ -289,6 +357,17 @@
     $idatendimento = $util->testInput($_GET['id']);
 
     if ($db->updateScheduleFrequence($idatendimento)) {
+      echo $util->showMessage('success', 'Atualizado com sucesso!');
+    } else {
+      echo $util->showMessage('danger', 'Algo deu errado!');
+    }
+  }
+  
+  if (isset($_GET['registerFault'])) {
+
+    $idatendimento = $util->testInput($_GET['id']);
+
+    if ($db->registerFault($idatendimento)) {
       echo $util->showMessage('success', 'Atualizado com sucesso!');
     } else {
       echo $util->showMessage('danger', 'Algo deu errado!');
@@ -549,37 +628,7 @@ if (isset($_GET['readEmployee'])) {
     echo $util->showMessage('danger', 'Total de despesa em '.$_GET['mes'].' de '.$_GET['ano'].' com Taxas/Impostos: R$ '.json_encode(str_replace('""',' ',number_format($ValueTax["SUM(valor)"],2))));
   }
 
-  if (isset($_GET['select'])) {
-    
-    $user = $db->select($_GET['mes'],$_GET['ano']);
-    $output = '';
-    if ($user) {
-      foreach ($user as $row) {
-        $output .= '<tr>
-                      <td>' . $row['id'] . '</td>
-                      <td>' . $row['nome'] . '</td>
-                      <td>' . $row['natureza'] . '</td>
-                      <td>' . $row['valor'] . '</td>
-                      <td>' . $row['contato'] . '</td>
-                      <td>' . $row['created_at'] . '</td>
-                      <td> 
-                        <a href="print.php?id='. $row['id'] .'" id="" target:_blank' . $row['id'] . '" class="btn btn-primary btn-sm rounded-pill py-0 ">Imprimir</a>  
-                        <a href="#" id="' . $row['id'] . '" class="btn btn-success btn-sm rounded-pill py-0 editLink" data-toggle="modal" data-target="#editPacientModal">Editar</a>
-                        <a href="#" id="' . $row['id'] . '" class="btn btn-danger btn-sm rounded-pill py-0 deleteLink  data-bs-toggle="modal" data-bs-target="#confirmDeleteModal">Delete</a>
-                      </td>
-                    </tr>';
-      }
-      echo $output;
 
-    } else {
-      echo '<tr>
-              <td colspan="6">Não existe registro no banco</td>
-            </tr>';
-    }
-
-  }
-
-  
   
 
 

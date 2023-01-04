@@ -1,5 +1,10 @@
 <?php
 
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
+    header("location: index.php");
+    exit;
+}
+
   require_once 'config.php';
   setlocale(LC_TIME, 'pt_BR', 'pt_BR.utf-8', 'pt_BR.utf-8', 'portuguese');
   date_default_timezone_set('America/Sao_Paulo');
@@ -81,11 +86,40 @@
 
 
     public function readSchedule() {
-      $sql = 'SELECT atendimento.idatendimento, atendimento.medico, atendimento.tipo, clientes.prontuario, clientes.nome, clientes.contato, atendimento.frequencia,atendimento.estado, clientes.plano, atendimento.dataconsulta, clientes.hora FROM atendimento INNER JOIN clientes ON atendimento.pacienteid = clientes.id ORDER BY id DESC';
+      $sql = 'SELECT atendimento.idatendimento, atendimento.medico, atendimento.tipo, clientes.prontuario, clientes.nome, clientes.contato, atendimento.frequencia,atendimento.estado, clientes.plano, atendimento.dataconsulta, clientes.hora FROM atendimento INNER JOIN clientes ON atendimento.pacienteid = clientes.id ORDER BY id ';
       $stmt = $this->conn->prepare($sql);
       $stmt->execute();
       $result = $stmt->fetchAll();
       return $result;
+    }
+
+
+    public function readSchedule2() {
+      $sql = 'SELECT atendimento.idatendimento, atendimento.medico, atendimento.tipo, clientes.prontuario, clientes.nome, clientes.contato, atendimento.frequencia,atendimento.estado, clientes.plano, atendimento.dataconsulta, clientes.hora FROM atendimento INNER JOIN clientes ON atendimento.pacienteid = clientes.id ORDER BY id ';
+      $stmt = $this->conn->prepare($sql);
+      $stmt->execute();
+      $result = $stmt->fetchAll();
+      return json_encode($result);
+    }
+
+    public function readScheduleCat($tipo) {
+      $sql = 'SELECT atendimento.idatendimento, atendimento.medico, atendimento.tipo, clientes.prontuario, clientes.nome, clientes.contato, atendimento.frequencia,atendimento.estado, clientes.plano, atendimento.dataconsulta, clientes.hora FROM atendimento INNER JOIN clientes ON atendimento.pacienteid = clientes.id WHERE  atendimento.tipo = :tipo ORDER BY id DESC';
+      $stmt = $this->conn->prepare($sql);
+      $stmt->execute([
+        'tipo' => $tipo
+      ]);
+      $result = $stmt->fetchAll();
+      return ($result);
+    }
+
+    public function readScheduleCat2($tipo) {
+      $sql = 'SELECT atendimento.idatendimento, atendimento.medico, atendimento.tipo, clientes.prontuario, clientes.nome, clientes.contato, atendimento.frequencia,atendimento.estado, clientes.plano, atendimento.dataconsulta, clientes.hora FROM atendimento INNER JOIN clientes ON atendimento.pacienteid = clientes.id WHERE  atendimento.tipo = :tipo ORDER BY id DESC';
+      $stmt = $this->conn->prepare($sql);
+      $stmt->execute([
+        'tipo' => $tipo
+      ]);
+      $result = $stmt->fetchAll();
+      return json_encode($result);
     }
 
 
@@ -152,10 +186,20 @@
       return true;
     }
     public function updateScheduleFrequence($idatendimento) {
-      $sql = 'UPDATE atendimento SET frequencia = :frequencia WHERE idatendimento = :idatendimento';
+      $sql = 'UPDATE atendimento SET frequencia = :frequencia, estado = :estado WHERE idatendimento = :idatendimento';
       $stmt = $this->conn->prepare($sql);
       $stmt->execute([
         'frequencia' => 'checked',
+        'estado' => 'compareceu',
+        'idatendimento' => $idatendimento
+      ]);
+      return true;
+    }
+    public function registerFault($idatendimento) {
+      $sql = 'UPDATE atendimento SET estado = :estado WHERE idatendimento = :idatendimento';
+      $stmt = $this->conn->prepare($sql);
+      $stmt->execute([
+        'estado' => 'faltou a seção',
         'idatendimento' => $idatendimento
       ]);
       return true;
